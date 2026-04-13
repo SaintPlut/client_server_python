@@ -36,7 +36,6 @@ class Client:
 
         print("\n" + "=" * 50)
         print("ЧАТ ЗАПУЩЕН")
-        print("@ - преобразование текста")
         print("exit - выход")
         print("=" * 50)
         print("> ", end="", flush=True)
