@@ -13,69 +13,72 @@ class Client:
         try:
             self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             self.client_socket.connect((self.host, self.port))
-            print(f"[КЛИЕНТ] Подключен к серверу {self.host}:{self.port}")
+            print(f"Подключен к серверу {self.host}:{self.port}")
             return True
-        except socket.error as e:
-            print(f"[КЛИЕНТ] Ошибка: Не удалось подключиться к серверу {self.host}:{self.port}")
-            print(f"[КЛИЕНТ] Причина: {e}")
+        except socket.error:
+            print("Ошибка: не удалось подключиться к серверу")
             return False
-
-    def send_message(self, message):
-        try:
-            self.client_socket.send(message.encode("utf-8"))
-            return True
-        except socket.error as e:
-            print(f"[КЛИЕНТ] Ошибка при отправке: {e}")
-            return False
-
-    def receive_response(self):
-        try:
-            response = self.client_socket.recv(1024).decode("utf-8")
-            print(f"\n[ОТВЕТ СЕРВЕРА]\n{response}\n")
-            return True
-        except socket.error as e:
-            print(f"[КЛИЕНТ] Ошибка при получении ответа: {e}")
-            return False
-
-    def stop(self):
-        self.running = False
-        if self.client_socket:
-            self.client_socket.close()
-
-    def run(self):
-        # Запускаем поток для получения сообщений от сервера
-        receive_thread = threading.Thread(target=self.receive_messages)
-        receive_thread.daemon = True
-        receive_thread.start()
-
-        try:
-            while self.running:
-                message = input()
-
-                if message.lower() in ['exit', 'выход', 'quit']:
-                    self.send_message("exit")
-                    break
-
-                if not message:
-                    continue
-
-                if not self.send_message(message):
-                    break
-
-        except KeyboardInterrupt:
-            print("\n[КЛИЕНТ] Работа прервана пользователем")
-        finally:
-            self.stop()
-            print("[КЛИЕНТ] Соединение закрыто")
 
     def receive_messages(self):
+        """Поток для ПОСТОЯННОГО получения сообщений от сервера"""
         while self.running:
             try:
-                response = self.client_socket.recv(1024).decode("utf-8")
+                response = self.client_socket.recv(1024).decode('utf-8')
                 if response:
-                    print(f"\n[ОТВЕТ СЕРВЕРА]\n{response}\n")
-                    print("Введите сообщение (или 'exit' для выхода): ")
+                    print(f"\n{response}")
+                    print("> ", end="", flush=True)
                 else:
                     break
             except:
                 break
+
+    def run(self):
+        # Запускаем поток для приема сообщений
+        receive_thread = threading.Thread(target=self.receive_messages, daemon=True)
+        receive_thread.start()
+
+        print("\n" + "=" * 60)
+        print("КЛИЕНТ ЗАПУЩЕН")
+        print("=" * 60)
+        print("Все сообщения видят ВСЕ подключенные клиенты")
+        print("(включая отправителя)")
+        print("=" * 60)
+        print("Правила преобразования:")
+        print("- Символ @ преобразует следующий за ним текст")
+        print("- Русские буквы: буква в ВЕРХНЕМ регистре + 5 следующих в нижнем")
+        print("=" * 60)
+        print("Пример: Привет @абв -> Привет @АбвгдеБвгдежВгдежз")
+        print("=" * 60)
+        print("Введите 'exit' для выхода")
+        print("=" * 60)
+        print("> ", end="", flush=True)
+
+        while self.running:
+            try:
+                message = input()
+
+                if message.lower() == 'exit':
+                    self.client_socket.send('exit'.encode('utf-8'))
+                    break
+
+                if message:
+                    self.client_socket.send(message.encode('utf-8'))
+
+                print("> ", end="", flush=True)
+
+            except KeyboardInterrupt:
+                break
+            except:
+                break
+
+        self.running = False
+        self.client_socket.close()
+        print("\nСоединение закрыто")
+
+
+if __name__ == "__main__":
+    ip = input("Введите IP-адрес сервера: ")
+    port = int(input("Введите порт сервера: "))
+    client = Client(ip, port)
+    if client.connect():
+        client.run()
