@@ -20,7 +20,6 @@ class Client:
             return False
 
     def receive_messages(self):
-        """Поток для ПОСТОЯННОГО получения сообщений от сервера"""
         while self.running:
             try:
                 response = self.client_socket.recv(1024).decode('utf-8')
@@ -33,24 +32,13 @@ class Client:
                 break
 
     def run(self):
-        # Запускаем поток для приема сообщений
-        receive_thread = threading.Thread(target=self.receive_messages, daemon=True)
-        receive_thread.start()
+        threading.Thread(target=self.receive_messages, daemon=True).start()
 
-        print("\n" + "=" * 60)
-        print("КЛИЕНТ ЗАПУЩЕН")
-        print("=" * 60)
-        print("Все сообщения видят ВСЕ подключенные клиенты")
-        print("(включая отправителя)")
-        print("=" * 60)
-        print("Правила преобразования:")
-        print("- Символ @ преобразует следующий за ним текст")
-        print("- Русские буквы: буква в ВЕРХНЕМ регистре + 5 следующих в нижнем")
-        print("=" * 60)
-        print("Пример: Привет @абв -> Привет @АбвгдеБвгдежВгдежз")
-        print("=" * 60)
-        print("Введите 'exit' для выхода")
-        print("=" * 60)
+        print("\n" + "=" * 50)
+        print("ЧАТ ЗАПУЩЕН")
+        print("@ - преобразование текста")
+        print("exit - выход")
+        print("=" * 50)
         print("> ", end="", flush=True)
 
         while self.running:
@@ -68,17 +56,15 @@ class Client:
 
             except KeyboardInterrupt:
                 break
-            except:
-                break
 
         self.running = False
         self.client_socket.close()
-        print("\nСоединение закрыто")
+        print("Соединение закрыто")
 
 
 if __name__ == "__main__":
-    ip = input("Введите IP-адрес сервера: ")
+    host = input("Введите IP-адрес сервера: ")
     port = int(input("Введите порт сервера: "))
-    client = Client(ip, port)
+    client = Client(host, port)
     if client.connect():
         client.run()

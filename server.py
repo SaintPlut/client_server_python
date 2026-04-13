@@ -12,7 +12,6 @@ class Server:
         self.clients_lock = threading.Lock()
 
     def transform_text(self, text):
-        """Преобразование текста: буква в верхнем регистре + 5 следующих в нижнем"""
         result = ""
         i = 0
         while i < len(text):
@@ -29,7 +28,6 @@ class Server:
         return result
 
     def process_message(self, message):
-        """Обработка всех символов @ в сообщении"""
         result = ""
         i = 0
         while i < len(message):
@@ -46,8 +44,7 @@ class Server:
                 i += 1
         return result
 
-    def send_to_all_clients(self, message):
-        """Отправить сообщение ВСЕМ клиентам (включая отправителя)"""
+    def send_to_all(self, message):
         with self.clients_lock:
             disconnected = []
             for client in self.clients:
@@ -55,20 +52,16 @@ class Server:
                     client['socket'].send(message.encode('utf-8'))
                 except:
                     disconnected.append(client)
-
             for client in disconnected:
                 self.clients.remove(client)
 
     def handle_client(self, client_socket, addr):
-        """Обработка одного клиента в отдельном потоке"""
         print(f"Клиент подключен: {addr}")
 
-        # Добавляем клиента в список
         with self.clients_lock:
             self.clients.append({'socket': client_socket, 'addr': addr})
 
-        # Уведомляем всех о новом клиенте
-        self.send_to_all_clients(f"[СИСТЕМА] Клиент {addr} подключился. Всего клиентов: {len(self.clients)}")
+        self.send_to_all(f"[СИСТЕМА] Клиент {addr} подключился. Всего: {len(self.clients)}")
 
         while True:
             try:
@@ -78,32 +71,20 @@ class Server:
 
                 print(f"Получено от {addr}: {data}")
 
-                # Проверка на выход
                 if data.lower() == 'exit':
                     client_socket.send("До свидания!".encode('utf-8'))
                     break
 
-                # Обрабатываем сообщение (преобразуем все @)
-                processed_message = self.process_message(data)
+                processed = self.process_message(data)
+                self.send_to_all(f"[{addr}] {processed}")
 
-                # ОТПРАВЛЯЕМ ВСЕМ КЛИЕНТАМ ОДИНАКОВУЮ ИНФОРМАЦИЮ
-                # Формируем сообщение для рассылки
-                broadcast_message = f"[{addr}] {processed_message}"
-
-                # Отправляем ВСЕМ клиентам (включая отправителя)
-                self.send_to_all_clients(broadcast_message)
-
-            except Exception as e:
-                print(f"Ошибка: {e}")
+            except:
                 break
 
-        # Удаляем клиента
         with self.clients_lock:
             self.clients = [c for c in self.clients if c['socket'] != client_socket]
 
-        # Уведомляем всех об отключении
-        self.send_to_all_clients(f"[СИСТЕМА] Клиент {addr} отключился. Осталось клиентов: {len(self.clients)}")
-
+        self.send_to_all(f"[СИСТЕМА] Клиент {addr} отключился. Осталось: {len(self.clients)}")
         print(f"Клиент отключен: {addr}")
         client_socket.close()
 
@@ -114,17 +95,13 @@ class Server:
             self.server_socket.bind(('', self.port))
             self.server_socket.listen(5)
             print(f"Сервер запущен на порту {self.port}")
-            print(f"Ожидание подключения клиентов...")
 
             while True:
                 client_socket, addr = self.server_socket.accept()
-                thread = threading.Thread(target=self.handle_client, args=(client_socket, addr))
-                thread.daemon = True
-                thread.start()
+                threading.Thread(target=self.handle_client, args=(client_socket, addr), daemon=True).start()
 
         except OSError:
             print("Ошибка: порт занят!")
-            return
         except KeyboardInterrupt:
             print("\nСервер остановлен")
         finally:
